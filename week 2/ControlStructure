@@ -1,0 +1,62 @@
+-- PL/SQL Script: Customer & Loan Management
+-- BLOCK 1: Apply 1% Discount for Senior Citizens
+DECLARE
+    v_age NUMBER;
+BEGIN
+    FOR c IN (SELECT CustomerID, Name, DOB FROM Customers) LOOP
+        v_age := TRUNC(MONTHS_BETWEEN(SYSDATE, c.DOB) / 12);
+
+        IF v_age > 60 THEN
+            UPDATE Loans
+            SET InterestRate = InterestRate - 1
+            WHERE CustomerID = c.CustomerID;
+
+            DBMS_OUTPUT.PUT_LINE('Discount applied for ' || c.Name || ' (Age: ' || v_age || ')');
+        END IF;
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+-- BLOCK 2: Update VIP Status Based on Balance
+BEGIN
+    FOR c IN (SELECT CustomerID, Name, Balance FROM Customers) LOOP
+        IF c.Balance > 10000 THEN
+            UPDATE Customers
+            SET IsVIP = 'TRUE'
+            WHERE CustomerID = c.CustomerID;
+
+            DBMS_OUTPUT.PUT_LINE(c.Name || ' promoted to VIP.');
+        ELSE
+            UPDATE Customers
+            SET IsVIP = 'FALSE'
+            WHERE CustomerID = c.CustomerID;
+
+            DBMS_OUTPUT.PUT_LINE(c.Name || ' is not VIP.');
+        END IF;
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+-- BLOCK 3: Show Loan Due Reminders (Next 30 Days)
+DECLARE
+    v_name Customers.Name%TYPE;
+BEGIN
+    FOR l IN (
+        SELECT LoanID, CustomerID, EndDate
+        FROM Loans
+        WHERE EndDate BETWEEN SYSDATE AND SYSDATE + 30
+    ) LOOP
+        SELECT Name INTO v_name
+        FROM Customers
+        WHERE CustomerID = l.CustomerID;
+
+        DBMS_OUTPUT.PUT_LINE('📢 Reminder: Loan ' || l.LoanID || ' for ' || v_name ||
+                             ' is due on ' || TO_CHAR(l.EndDate, 'DD-MON-YYYY'));
+    END LOOP;
+END;
+/
+
