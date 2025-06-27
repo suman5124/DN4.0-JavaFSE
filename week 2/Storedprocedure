@@ -1,0 +1,124 @@
+-- ========================================
+-- BANK PROCEDURES SCRIPT
+-- Description:
+--   1. Process monthly interest for savings accounts
+--   2. Grant performance-based bonuses to employees
+--   3. Enable secure fund transfers between customer accounts
+-- ========================================
+
+-- SCENARIO 1: Monthly Interest Application on Savings Accounts
+-- Procedure: ProcessMonthlyInterest
+
+CREATE OR REPLACE PROCEDURE ProcessMonthlyInterest AS
+BEGIN
+    FOR acc IN (
+        SELECT AccountID, Balance 
+        FROM Accounts 
+        WHERE AccountType = 'Savings'
+    ) LOOP
+        UPDATE Accounts
+        SET Balance = Balance + (acc.Balance * 0.01)
+        WHERE AccountID = acc.AccountID;
+
+        DBMS_OUTPUT.PUT_LINE('✔ 1% interest credited to Savings Account #' || acc.AccountID);
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+-- Execute the interest processing
+BEGIN
+    ProcessMonthlyInterest;
+END;
+/
+
+-- View updated savings account balances
+SELECT AccountID, AccountType, Balance FROM Accounts WHERE AccountType = 'Savings';
+
+-- ===================================================
+-- SCENARIO 2: Bonus Scheme for Employees by Department
+-- Procedure: UpdateEmployeeBonus
+
+CREATE OR REPLACE PROCEDURE UpdateEmployeeBonus (
+    p_department IN VARCHAR2,
+    p_bonus_percent IN NUMBER
+) AS
+BEGIN
+    FOR emp IN (
+        SELECT EmployeeID, Name, Salary 
+        FROM Employees 
+        WHERE Department = p_department
+    ) LOOP
+        UPDATE Employees
+        SET Salary = Salary + (emp.Salary * p_bonus_percent / 100)
+        WHERE EmployeeID = emp.EmployeeID;
+
+        DBMS_OUTPUT.PUT_LINE('💼 Bonus of ' || p_bonus_percent || '% added for employee ' || emp.Name || 
+                             '. New estimated salary: ₹' || TO_CHAR(emp.Salary + (emp.Salary * p_bonus_percent / 100)));
+    END LOOP;
+
+    COMMIT;
+END;
+/
+
+-- Apply a 10% bonus to all employees in HR
+BEGIN
+    UpdateEmployeeBonus('HR', 10);
+END;
+/
+
+-- Display updated employee data for HR department
+SELECT * FROM Employees WHERE Department = 'HR';
+
+-- ===================================================
+-- SCENARIO 3: Funds Transfer Between Customer Accounts
+-- Procedure: TransferFunds
+
+CREATE OR REPLACE PROCEDURE TransferFunds (
+    p_from_account IN NUMBER,
+    p_to_account IN NUMBER,
+    p_amount IN NUMBER
+) AS
+    v_from_balance Accounts.Balance%TYPE;
+BEGIN
+    -- Fetch current balance of sender account
+    SELECT Balance INTO v_from_balance
+    FROM Accounts
+    WHERE AccountID = p_from_account;
+
+    -- Ensure sufficient balance before transferring
+    IF v_from_balance < p_amount THEN
+        DBMS_OUTPUT.PUT_LINE('⚠ Transfer declined: Account #' || p_from_account || ' has insufficient balance.');
+    ELSE
+        -- Deduct amount from sender's account
+        UPDATE Accounts
+        SET Balance = Balance - p_amount
+        WHERE AccountID = p_from_account;
+
+        -- Add amount to receiver's account
+        UPDATE Accounts
+        SET Balance = Balance + p_amount
+        WHERE AccountID = p_to_account;
+
+        DBMS_OUTPUT.PUT_LINE('💸 ₹' || p_amount || ' successfully transferred from Account #' || p_from_account ||
+                             ' to Account #' || p_to_account || '.');
+        COMMIT;
+    END IF;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('❌ Error: One or both account numbers are invalid.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('❌ Unexpected error during transfer: ' || SQLERRM);
+END;
+/
+
+-- Example transfer execution
+BEGIN
+    TransferFunds(1, 2, 500);  -- Transferring ₹500 from Account 1 to Account 2
+END;
+/
+
+-- Check all account balances
+SELECT AccountID, CustomerID, AccountType, Balance FROM Accounts;
