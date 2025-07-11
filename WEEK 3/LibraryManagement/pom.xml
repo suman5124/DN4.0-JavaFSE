@@ -7,6 +7,10 @@
     <groupId>com.library</groupId>
     <artifactId>LibraryManagement</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>Ex 4/LibraryManagement2</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
